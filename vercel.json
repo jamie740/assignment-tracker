@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/notify",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/remind?time=afterschool",
+      "schedule": "15 22 * * *"
+    },
+    {
+      "path": "/api/remind?time=evening",
+      "schedule": "0 1 * * *"
+    }
+  ]
+}
