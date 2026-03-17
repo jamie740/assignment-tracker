@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { supabase } from "@/lib/supabase";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function POST(req: Request) {
   try {
@@ -13,22 +13,21 @@ export async function POST(req: Request) {
     // Convert to base64
     const buffer = await file.arrayBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
-    const mediaType = (file.type || "image/jpeg") as "image/jpeg" | "image/png" | "image/webp";
 
-    // Fetch courses so Claude can try to match one
+    // Fetch courses so GPT can try to match one
     const { data: courses } = await supabase.from("courses").select("id, name");
     const courseList = (courses ?? []).map((c: { id: string; name: string }) => `${c.name} (id: ${c.id})`).join(", ");
 
-    const message = await client.messages.create({
-      model: "claude-opus-4-6",
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
       max_tokens: 1024,
       messages: [
         {
           role: "user",
           content: [
             {
-              type: "image",
-              source: { type: "base64", media_type: mediaType, data: base64 },
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${base64}` },
             },
             {
               type: "text",
@@ -51,7 +50,7 @@ If no due date is visible, return null for due_date. Keep title concise (under 6
       ],
     });
 
-    const text = message.content[0].type === "text" ? message.content[0].text : "";
+    const text = response.choices[0]?.message?.content ?? "";
     const extracted = JSON.parse(text);
 
     return NextResponse.json({ success: true, data: extracted });
