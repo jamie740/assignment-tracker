@@ -34,7 +34,7 @@ export default function NewAssignment() {
       const img = new Image();
       const url = URL.createObjectURL(file);
       img.onload = () => {
-        const MAX = 1600;
+        const MAX = 1000;
         let { naturalWidth: w, naturalHeight: h } = img;
         if (w > MAX || h > MAX) {
           if (w > h) { h = Math.round((h / w) * MAX); w = MAX; }
@@ -45,7 +45,7 @@ export default function NewAssignment() {
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
         URL.revokeObjectURL(url);
-        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Conversion failed")), "image/jpeg", 0.8);
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Conversion failed")), "image/jpeg", 0.7);
       };
       img.onerror = reject;
       img.src = url;
