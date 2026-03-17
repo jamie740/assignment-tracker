@@ -28,6 +28,23 @@ export default function NewAssignment() {
     });
   }, []);
 
+  // Convert any image (including HEIC) to JPEG via canvas before uploading
+  const toJpeg = (file: File): Promise<Blob> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext("2d")!.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Canvas conversion failed")), "image/jpeg", 0.92);
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -36,8 +53,9 @@ export default function NewAssignment() {
     setScanState("scanning");
 
     try {
+      const jpeg = await toJpeg(file);
       const fd = new FormData();
-      fd.append("image", file);
+      fd.append("image", jpeg, "assignment.jpg");
       const res = await fetch("/api/scan-assignment", { method: "POST", body: fd });
       const json = await res.json();
 
