@@ -97,7 +97,8 @@ export default function NewAssignment() {
         course_id: course_id ?? f.course_id,
       }));
       setScanState("done");
-    } catch {
+    } catch (err) {
+      console.error("Photo scan failed:", err);
       setScanState("error");
     }
   };
