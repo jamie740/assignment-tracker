@@ -6,11 +6,7 @@
     },
     {
       "path": "/api/remind?time=afterschool",
-      "schedule": "15 22 * * *"
-    },
-    {
-      "path": "/api/remind?time=evening",
-      "schedule": "0 1 * * *"
+      "schedule": "0 23 * * 1-5"
     }
   ]
 }

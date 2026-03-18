@@ -5,6 +5,16 @@ import Navbar from "@/components/Navbar";
 export const metadata: Metadata = {
   title: "Assignment Tracker",
   description: "Jamie's personal assignment tracker",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Tracker",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
