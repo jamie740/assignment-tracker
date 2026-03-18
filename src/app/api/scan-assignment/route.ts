@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import sharp from "sharp";
 import { supabase } from "@/lib/supabase";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function POST(req: Request) {
   try {
-    const { image } = await req.json();
+    const { image, mimeType } = await req.json();
     if (!image) return NextResponse.json({ error: "No image provided" }, { status: 400 });
+
+    // Convert to JPEG via sharp (handles HEIC, PNG, JPEG, WEBP, etc.)
+    const inputBuffer = Buffer.from(image, "base64");
+    const jpegBuffer = await sharp(inputBuffer)
+      .resize({ width: 1200, height: 1600, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 75 })
+      .toBuffer();
+    const base64Jpeg = jpegBuffer.toString("base64");
 
     // Fetch courses so GPT can try to match one
     const { data: courses } = await supabase.from("courses").select("id, name");
@@ -22,7 +31,7 @@ export async function POST(req: Request) {
           content: [
             {
               type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${image}` },
+              image_url: { url: `data:image/jpeg;base64,${base64Jpeg}` },
             },
             {
               type: "text",
@@ -53,7 +62,6 @@ IMPORTANT due date rules:
     });
 
     const raw = response.choices[0]?.message?.content ?? "";
-    // Strip markdown code fences if present
     const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
     const extracted = JSON.parse(text);
 
