@@ -28,17 +28,45 @@ export default function NewAssignment() {
     });
   }, []);
 
-  // Read file as base64 and send raw — server handles conversion
-  const toBase64 = (file: File): Promise<string> =>
+  // Compress a blob via canvas and return base64 jpeg string
+  const canvasCompress = (blob: Blob): Promise<string> =>
     new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        resolve(dataUrl.split(",")[1]);
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        const MAX = 1200;
+        let { naturalWidth: w, naturalHeight: h } = img;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round((h / w) * MAX); w = MAX; }
+          else { w = Math.round((w / h) * MAX); h = MAX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL("image/jpeg", 0.75).split(",")[1]);
       };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("load failed")); };
+      img.src = url;
     });
+
+  // Convert any file (including HEIC) to compressed base64 jpeg
+  const toBase64 = async (file: File): Promise<string> => {
+    // Try direct canvas — works for JPEG/PNG everywhere, and HEIC on Safari
+    try {
+      return await canvasCompress(file);
+    } catch {
+      // Fallback: use heic2any for Chrome/Firefox which can't decode HEIC
+      const mod = await import("heic2any");
+      const heic2any = mod.default ?? mod;
+      const result = await (heic2any as (opts: object) => Promise<Blob | Blob[]>)({
+        blob: file, toType: "image/jpeg", quality: 0.85,
+      });
+      // heic2any may return an array for multi-image HEIC files — take the first
+      const converted = Array.isArray(result) ? result[0] : result;
+      return await canvasCompress(converted);
+    }
+  };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
