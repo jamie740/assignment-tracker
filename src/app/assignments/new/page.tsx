@@ -28,21 +28,8 @@ export default function NewAssignment() {
     });
   }, []);
 
-  // Convert file to a JPEG blob, handling HEIC files explicitly
-  const toJpegBlob = async (file: File): Promise<Blob> => {
-    const isHeic = file.type === "image/heic" || file.type === "image/heif" ||
-      file.name.toLowerCase().endsWith(".heic") || file.name.toLowerCase().endsWith(".heif");
-
-    let blob: Blob = file;
-    if (isHeic) {
-      const heic2any = (await import("heic2any")).default;
-      blob = (await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 })) as Blob;
-    }
-    return blob;
-  };
-
-  // Compress a blob via canvas and return base64 string
-  const compressToBase64 = (blob: Blob): Promise<string> =>
+  // Draw a blob into a canvas and return compressed base64
+  const canvasCompress = (blob: Blob): Promise<string> =>
     new Promise((resolve, reject) => {
       const img = new Image();
       const url = URL.createObjectURL(blob);
@@ -58,12 +45,30 @@ export default function NewAssignment() {
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
         URL.revokeObjectURL(url);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-        resolve(dataUrl.split(",")[1]);
+        resolve(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
       };
-      img.onerror = reject;
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("load failed")); };
       img.src = url;
     });
+
+  // Convert any image file (including HEIC) to compressed base64
+  const toBase64 = async (file: File): Promise<string> => {
+    // Try direct canvas first — works for JPEG/PNG and HEIC on Safari
+    try {
+      return await canvasCompress(file);
+    } catch {
+      // If direct load failed, try heic2any conversion as fallback
+      const isHeic = file.type === "image/heic" || file.type === "image/heif" ||
+        file.name.toLowerCase().endsWith(".heic") || file.name.toLowerCase().endsWith(".heif");
+      if (!isHeic) throw new Error("Unsupported format");
+      const mod = await import("heic2any");
+      const heic2any = mod.default ?? mod;
+      const converted = await (heic2any as (opts: object) => Promise<Blob>)({
+        blob: file, toType: "image/jpeg", quality: 0.8,
+      });
+      return await canvasCompress(converted);
+    }
+  };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -73,8 +78,7 @@ export default function NewAssignment() {
     setScanState("scanning");
 
     try {
-      const jpegBlob = await toJpegBlob(file);
-      const base64 = await compressToBase64(jpegBlob);
+      const base64 = await toBase64(file);
       const res = await fetch("/api/scan-assignment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
