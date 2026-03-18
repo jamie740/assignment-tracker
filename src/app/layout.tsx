@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="min-h-screen bg-slate-50 antialiased">
         <Navbar />
-        <main className="pt-14 max-w-5xl mx-auto px-4 py-8">{children}</main>
+        <main className="pt-14 pb-20 sm:pb-8 max-w-5xl mx-auto px-4 py-8">{children}</main>
       </body>
     </html>
   );
