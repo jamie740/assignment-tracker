@@ -45,7 +45,9 @@ If no due date is visible, return null for due_date. Keep title concise (under 6
       ],
     });
 
-    const text = response.choices[0]?.message?.content ?? "";
+    const raw = response.choices[0]?.message?.content ?? "";
+    // Strip markdown code fences if present
+    const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
     const extracted = JSON.parse(text);
 
     return NextResponse.json({ success: true, data: extracted });

@@ -28,13 +28,26 @@ export default function NewAssignment() {
     });
   }, []);
 
-  // Compress image and return base64 string
-  const toBase64 = (file: File): Promise<string> =>
+  // Convert file to a JPEG blob, handling HEIC files explicitly
+  const toJpegBlob = async (file: File): Promise<Blob> => {
+    const isHeic = file.type === "image/heic" || file.type === "image/heif" ||
+      file.name.toLowerCase().endsWith(".heic") || file.name.toLowerCase().endsWith(".heif");
+
+    let blob: Blob = file;
+    if (isHeic) {
+      const heic2any = (await import("heic2any")).default;
+      blob = (await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 })) as Blob;
+    }
+    return blob;
+  };
+
+  // Compress a blob via canvas and return base64 string
+  const compressToBase64 = (blob: Blob): Promise<string> =>
     new Promise((resolve, reject) => {
       const img = new Image();
-      const url = URL.createObjectURL(file);
+      const url = URL.createObjectURL(blob);
       img.onload = () => {
-        const MAX = 600;
+        const MAX = 800;
         let { naturalWidth: w, naturalHeight: h } = img;
         if (w > MAX || h > MAX) {
           if (w > h) { h = Math.round((h / w) * MAX); w = MAX; }
@@ -45,8 +58,7 @@ export default function NewAssignment() {
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
         URL.revokeObjectURL(url);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
-        // Strip the data:image/jpeg;base64, prefix
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
         resolve(dataUrl.split(",")[1]);
       };
       img.onerror = reject;
@@ -61,7 +73,8 @@ export default function NewAssignment() {
     setScanState("scanning");
 
     try {
-      const base64 = await toBase64(file);
+      const jpegBlob = await toJpegBlob(file);
+      const base64 = await compressToBase64(jpegBlob);
       const res = await fetch("/api/scan-assignment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
