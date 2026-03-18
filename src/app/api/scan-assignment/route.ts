@@ -6,13 +6,8 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("image") as File;
-    if (!file) return NextResponse.json({ error: "No image provided" }, { status: 400 });
-
-    // Convert to base64
-    const buffer = await file.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString("base64");
+    const { image } = await req.json();
+    if (!image) return NextResponse.json({ error: "No image provided" }, { status: 400 });
 
     // Fetch courses so GPT can try to match one
     const { data: courses } = await supabase.from("courses").select("id, name");
@@ -27,7 +22,7 @@ export async function POST(req: Request) {
           content: [
             {
               type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${base64}` },
+              image_url: { url: `data:image/jpeg;base64,${image}` },
             },
             {
               type: "text",

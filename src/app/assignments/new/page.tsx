@@ -28,8 +28,8 @@ export default function NewAssignment() {
     });
   }, []);
 
-  // Convert any image (including HEIC) to a compressed JPEG before uploading
-  const toJpeg = (file: File): Promise<Blob> =>
+  // Compress image and return base64 string
+  const toBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const img = new Image();
       const url = URL.createObjectURL(file);
@@ -45,7 +45,9 @@ export default function NewAssignment() {
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
         URL.revokeObjectURL(url);
-        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Conversion failed")), "image/jpeg", 0.6);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+        // Strip the data:image/jpeg;base64, prefix
+        resolve(dataUrl.split(",")[1]);
       };
       img.onerror = reject;
       img.src = url;
@@ -59,10 +61,12 @@ export default function NewAssignment() {
     setScanState("scanning");
 
     try {
-      const jpeg = await toJpeg(file);
-      const fd = new FormData();
-      fd.append("image", jpeg, "assignment.jpg");
-      const res = await fetch("/api/scan-assignment", { method: "POST", body: fd });
+      const base64 = await toBase64(file);
+      const res = await fetch("/api/scan-assignment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64 }),
+      });
       const json = await res.json();
 
       if (!res.ok || !json.success) throw new Error(json.error ?? "Scan failed");
