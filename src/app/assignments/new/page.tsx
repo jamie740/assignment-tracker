@@ -134,7 +134,7 @@ export default function NewAssignment() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           capture="environment"
           onChange={handlePhotoChange}
           className="hidden"

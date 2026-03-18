@@ -28,6 +28,8 @@ export async function POST(req: Request) {
               type: "text",
               text: `You are helping a student log an assignment from a photo. Extract the following from the image and return ONLY valid JSON — no markdown, no explanation.
 
+Today's date is ${new Date().toISOString().split("T")[0]}.
+
 Available courses: ${courseList || "none yet"}
 
 Return this exact JSON shape:
@@ -38,7 +40,12 @@ Return this exact JSON shape:
   "course_id": "the id of the best matching course from the list, or null if unsure"
 }
 
-If no due date is visible, return null for due_date. Keep title concise (under 60 chars).`,
+IMPORTANT due date rules:
+- The due date must be between today and 30 days from today.
+- If the image shows only a month and day (e.g. "March 21"), pick the year that puts that date within the next 30 days.
+- If the date has already passed this year, use next year.
+- If no due date is visible, return null.
+- Keep title concise (under 60 chars).`,
             },
           ],
         },
